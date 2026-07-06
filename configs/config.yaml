@@ -12,11 +12,11 @@ project_name: "kalman_yolo_person_tracking"
 paths:
   model_path: "/home/eren/eren/smartuniversal/kalman_filtre_ile_nesne_takibi/models/yolo26m.pt"
 
-  input_video: "videos/input/video2.mp4"
+  input_video: "videos/input/video0.mp4"
 
-  output_video: "videos/output/output_kalman_video2.mp4"
+  output_video: "videos/output/output_kalman_video0.mp4"
   
-  log_csv: "videos/output/kalman_log_video2.csv"
+  log_csv: "videos/output/kalman_log_video0.csv"
 
 
 
@@ -70,7 +70,7 @@ kalman:
   measurement_noise_pos: 64.0
 
   # YOLO bbox genişlik/yükseklik için ölçüm gürültüsü
-  measurement_noise_size: 36.0
+  measurement_noise_size: 32.0
 
 
 # =========================
