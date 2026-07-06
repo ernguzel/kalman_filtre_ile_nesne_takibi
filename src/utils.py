@@ -1,8 +1,10 @@
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple ,Sequence
 
 import cv2
 import yaml
+
+import csv
 
 
 BBoxXYXY = Tuple[float, float, float, float]
@@ -212,3 +214,186 @@ def resize_for_display(frame, max_width: int = 1280, max_height: int = 720):
     )
 
     return resized
+
+
+
+def draw_polyline(
+    frame,
+    points: Sequence[Tuple[float, float]],
+    color: Tuple[int, int, int],
+    thickness: int = 2,
+):
+    """
+    Merkez noktalarının geçmişini çizgi olarak çizer.
+    """
+    if len(points) < 2:
+        return frame
+
+    for i in range(1, len(points)):
+        p1 = points[i - 1]
+        p2 = points[i]
+
+        if p1 is None or p2 is None:
+            continue
+
+        x1, y1 = int(p1[0]), int(p1[1])
+        x2, y2 = int(p2[0]), int(p2[1])
+
+        cv2.line(
+            frame,
+            (x1, y1),
+            (x2, y2),
+            color,
+            thickness,
+            cv2.LINE_AA,
+        )
+
+    return frame
+
+
+def draw_legend(
+    frame,
+    items,
+    top_right_margin: int = 20,
+    box_width: int = 330,
+    row_height: int = 28,
+):
+    """
+    Sağ üstte renk açıklama kutusu çizer.
+
+    items:
+        [
+            ("YOLO bbox", (0, 0, 255)),
+            ("Kalman bbox", (0, 255, 0)),
+        ]
+    """
+    frame_h, frame_w = frame.shape[:2]
+
+    box_height = 20 + len(items) * row_height
+    x1 = frame_w - box_width - top_right_margin
+    y1 = top_right_margin
+    x2 = frame_w - top_right_margin
+    y2 = y1 + box_height
+
+    # Arka plan
+    overlay = frame.copy()
+    cv2.rectangle(
+        overlay,
+        (x1, y1),
+        (x2, y2),
+        (30, 30, 30),
+        -1,
+    )
+
+    alpha = 0.65
+    cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
+
+    # Kenarlık
+    cv2.rectangle(
+        frame,
+        (x1, y1),
+        (x2, y2),
+        (220, 220, 220),
+        1,
+    )
+
+    title_y = y1 + 22
+    cv2.putText(
+        frame,
+        "Legend",
+        (x1 + 12, title_y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.65,
+        (255, 255, 255),
+        2,
+        cv2.LINE_AA,
+    )
+
+    for idx, (label, color) in enumerate(items):
+        y = y1 + 45 + idx * row_height
+
+        cv2.rectangle(
+            frame,
+            (x1 + 14, y - 14),
+            (x1 + 34, y + 4),
+            color,
+            -1,
+        )
+
+        cv2.putText(
+            frame,
+            label,
+            (x1 + 45, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+
+    return frame
+
+
+def init_csv_log(log_path: str) -> None:
+    """
+    Log CSV dosyasını başlık satırıyla oluşturur.
+    """
+    log_dir = os.path.dirname(log_path)
+    ensure_dir(log_dir)
+
+    headers = [
+        "frame_idx",
+        "yolo_detected",
+        "yolo_conf",
+        "raw_cx",
+        "raw_cy",
+        "raw_w",
+        "raw_h",
+        "kalman_active",
+        "track_id",
+        "kalman_status",
+        "lost_count",
+        "kalman_cx",
+        "kalman_cy",
+        "kalman_w",
+        "kalman_h",
+        "vx",
+        "vy",
+        "vw",
+        "vh",
+    ]
+
+    with open(log_path, "w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(headers)
+
+
+def append_csv_log(log_path: str, row: dict) -> None:
+    """
+    Her frame için CSV log satırı ekler.
+    """
+    headers = [
+        "frame_idx",
+        "yolo_detected",
+        "yolo_conf",
+        "raw_cx",
+        "raw_cy",
+        "raw_w",
+        "raw_h",
+        "kalman_active",
+        "track_id",
+        "kalman_status",
+        "lost_count",
+        "kalman_cx",
+        "kalman_cy",
+        "kalman_w",
+        "kalman_h",
+        "vx",
+        "vy",
+        "vw",
+        "vh",
+    ]
+
+    with open(log_path, "a", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=headers)
+        writer.writerow(row)

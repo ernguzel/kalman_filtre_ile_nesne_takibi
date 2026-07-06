@@ -12,9 +12,11 @@ project_name: "kalman_yolo_person_tracking"
 paths:
   model_path: "/home/eren/eren/smartuniversal/kalman_filtre_ile_nesne_takibi/models/yolo26m.pt"
 
-  input_video: "videos/input/video0.mp4"
+  input_video: "videos/input/video2.mp4"
 
-  output_video: "videos/output/output_kalman_video0.mp4"
+  output_video: "videos/output/output_kalman_video2.mp4"
+  
+  log_csv: "videos/output/kalman_log_video2.csv"
 
 
 
@@ -28,7 +30,7 @@ detector:
   person_class_id: 0
   
   # bu kadar yüksek olmasının sebebi git gel yapmasını sağlamak model zaten sürekli her frame de tespit yapabiliyor.
-  conf_threshold: 0.94
+  conf_threshold: 0.91
 
   #  model.track() değil, model.predict() kullanacağız kendi kalmanı denicez zaten .
   use_tracking: false
@@ -110,6 +112,15 @@ draw:
   bbox_thickness: 2
   kalman_bbox_thickness: 2
   center_radius: 4
+
+  show_legend: true
+  show_trails: true
+
+  raw_center_trail_color: [255, 0, 0]      # mavi
+  kalman_center_trail_color: [0, 255, 255] # sarı
+
+  trail_thickness: 2
+  trail_max_length: 0   # 0 olursa tüm geçmişi çizer
 
 
 # =========================
