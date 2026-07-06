@@ -1,0 +1,127 @@
+# =========================
+# PROJECT CONFIG
+# =========================
+
+project_name: "kalman_yolo_person_tracking"
+
+
+# =========================
+# PATHS
+# =========================
+
+paths:
+  model_path: "/home/eren/eren/smartuniversal/kalman_filtre_ile_nesne_takibi/models/yolo26m.pt"
+
+  input_video: "videos/input/video0.mp4"
+
+  output_video: "videos/output/output_kalman_video0.mp4"
+
+
+
+
+# =========================
+# YOLO DETECTOR SETTINGS
+# =========================
+
+detector:
+
+  person_class_id: 0
+  
+  # bu kadar yüksek olmasının sebebi git gel yapmasını sağlamak model zaten sürekli her frame de tespit yapabiliyor.
+  conf_threshold: 0.94
+
+  #  model.track() değil, model.predict() kullanacağız kendi kalmanı denicez zaten .
+  use_tracking: false
+
+  device: 0
+
+  imgsz: 640
+
+  # Aynı framede birden fazla insan çıkarsa 
+  # en yüksek confidence değerine sahip insan seçilecek.
+  select_strategy: "highest_confidence"
+
+
+# =========================
+# KALMAN FILTER SETTINGS
+# =========================
+
+kalman:
+  # Video frame aralığını şimdilik 1 kabul ediyoruz.
+  # fps'e göre dt = 1 / fps aslında daha doğru bakıcam
+  dt: 1.0
+
+  # State:
+  # [cx, cy, w, h, vx, vy, vw, vh]
+
+  # Başlangıç belirsizliği
+  initial_p: 10.0
+
+  # Hareket modeli gürültüsü
+  # Büyükse Kalman modele daha az güvenir, ölçümlere daha hızlı adapte olur.
+  # Küçükse daha yumuşak ama daha geç tepki veren takip olur.
+  accel_noise_pos: 0.1
+  accel_noise_size: 0.05
+
+  # Ölçüm gürültüsü
+  # YOLO bbox merkezi için ölçüm gürültüsü
+  measurement_noise_pos: 64.0
+
+  # YOLO bbox genişlik/yükseklik için ölçüm gürültüsü
+  measurement_noise_size: 36.0
+
+
+# =========================
+# TRACKER SETTINGS
+# =========================
+
+tracker:
+  # Kaç frame boyunca YOLO ölçümü gelmezse track pasif olsun?
+  max_lost_count: 10
+
+  # tek insan takip edecek.
+  multi_object: false
+
+  # Ölçüm yoksa sadece Kalman predict yapılacak.
+  predict_when_missing: true
+
+  # Track pasifken tekrar detection gelirse yeni track başlasın.
+  restart_when_detection_returns: true
+
+
+# =========================
+# DRAW SETTINGS
+# =========================
+
+draw:
+  show_raw_detection: true
+
+  show_kalman_bbox: true
+
+  show_centers: true
+
+  show_status_text: true
+
+  raw_bbox_color: [0, 0, 255]       # kırmızı
+  kalman_bbox_color: [0, 255, 0]    # yeşil
+  center_color: [255, 0, 0]         # mavi
+  text_color: [255, 255, 255]       # beyaz
+
+  bbox_thickness: 2
+  kalman_bbox_thickness: 2
+  center_radius: 4
+
+
+# =========================
+# VIDEO SETTINGS
+# =========================
+
+video:
+
+  use_original_fps: true
+
+  show_live: true
+  
+  display_resize: true
+  display_max_width: 1280
+  display_max_height: 720
