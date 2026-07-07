@@ -307,7 +307,7 @@ def main():
     parser.add_argument(
         "--csv",
         type=str,
-        default="videos/output/kalman_log_video_deneme.csv",
+        default="videos/output/kalman_log_video9.csv",
         help="Kalman log CSV path",
     )
     parser.add_argument(

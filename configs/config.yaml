@@ -14,11 +14,35 @@ paths:
 
   input_video: "videos/input/video0.mp4"
 
-  output_video: "videos/output/output_kalman_video0.mp4"
+  output_video: "videos/output/output_kalman_video9.mp4"
   
-  log_csv: "videos/output/kalman_log_video0.csv"
+  log_csv: "videos/output/kalman_log_video9.csv"
 
+# =========================
+# RTSP / GSTREAMER SETTINGS
+# =========================
 
+rtsp:
+  use_rtsp: true
+
+  # Güvenlik için mümkünse bunu sonradan env değişkeninden okumak daha iyi olur.
+  url: "rtsp://admin:Smart1234@192.168.0.108:554/cam/realmonitor?channel=1&subtype=0"
+
+  latency: 0
+
+  # Kamera görüntüsü ters ise true yap.
+  flip_enabled: true
+
+  # OpenCV flipCode:
+  #  0  -> dikey çevir
+  #  1  -> yatay çevir
+  # -1  -> hem yatay hem dikey, yani 180 derece döndür
+  flip_code: -1
+
+  # RTSP canlı akışta output video kaydı isteyip istemediğimiz.
+  save_output: true
+
+  max_frames: 0
 
 
 # =========================
@@ -30,7 +54,7 @@ detector:
   person_class_id: 0
   
   # bu kadar yüksek olmasının sebebi git gel yapmasını sağlamak model zaten sürekli her frame de tespit yapabiliyor.
-  conf_threshold: 0.91
+  conf_threshold: 0.65
 
   #  model.track() değil, model.predict() kullanacağız kendi kalmanı denicez zaten .
   use_tracking: false
@@ -133,6 +157,10 @@ video:
 
   show_live: true
   
+  wait_key_delay: 1
+  
   display_resize: true
   display_max_width: 1280
   display_max_height: 720
+
+  rtsp_output_fps: 30.0

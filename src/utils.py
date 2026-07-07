@@ -397,3 +397,37 @@ def append_csv_log(log_path: str, row: dict) -> None:
     with open(log_path, "a", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(file, fieldnames=headers)
         writer.writerow(row)
+
+
+
+
+def build_gstreamer_rtsp_pipeline(
+    rtsp_url: str,
+    latency: int = 0,
+) -> str:
+    """
+    OpenCV VideoCapture için GStreamer RTSP pipeline üretir.
+
+    Not:
+        gst-launch-1.0 komutunda sink olarak xvimagesink kullanıyorduk.
+        OpenCV tarafında ise son eleman appsink olmalı.
+    """
+
+    pipeline = (
+        f'rtspsrc location="{rtsp_url}" '
+        f"latency={latency} "
+        f"protocols=tcp "
+        f"buffer-mode=0 "
+        f"drop-on-latency=true "
+        f"do-retransmission=false "
+        f"ntp-sync=false "
+        f"short-header=true ! "
+        f"rtph264depay ! "
+        f"h264parse ! "
+        f"avdec_h264 ! "
+        f"queue leaky=2 max-size-buffers=1 max-size-time=0 max-size-bytes=0 ! "
+        f"videoconvert ! "
+        f"appsink drop=true max-buffers=1 sync=false"
+    )
+
+    return pipeline

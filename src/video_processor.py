@@ -20,7 +20,6 @@ from src.utils import (
     xyxy_to_cxcywh,
 )
 
-
 class VideoProcessor:
     """
     Video işleme sınıfı.
@@ -415,3 +414,162 @@ class VideoProcessor:
         }
 
         append_csv_log(self.log_path, row)
+
+
+    def run_rtsp_gst_python(
+        self,
+        rtsp_url: str,
+        output_video_path: str = None,
+        latency: int = 0,
+        flip_enabled: bool = False,
+        flip_code: int = -1,
+        max_frames: int = 0,
+    ) -> None:
+        """
+        OpenCV CAP_GSTREAMER kullanmadan, Python GStreamer appsink ile RTSP işler.
+
+        Akış:
+            RTSP kamera
+            -> GStreamer appsink
+            -> numpy BGR frame
+            -> YOLO
+            -> Kalman
+            -> çizim
+            -> output video / CSV log
+            -> GStreamer appsrc ile canlı gösterim
+
+        Not:
+            Bu fonksiyon cv2.imshow(), cv2.waitKey(), cv2.destroyAllWindows()
+            kullanmaz. Bu yüzden OpenCV GUI desteği olmayan env'lerde de çalışır.
+        """
+
+        from src.gstreamer_capture import GStreamerRTSPCapture
+
+        cap = GStreamerRTSPCapture(
+            rtsp_url=rtsp_url,
+            latency=latency,
+        )
+
+        writer = None
+        display = None
+
+        if self.log_path is not None:
+            init_csv_log(self.log_path)
+            print(f"Log CSV: {self.log_path}")
+
+        print("RTSP GStreamer Python Kalman processing başladı.")
+        print(f"RTSP URL: {rtsp_url}")
+        print("show_live true ise GStreamer appsrc ile canlı görüntü gösterilir.")
+        print("Çıkmak için terminalde Ctrl+C kullanabilirsin.")
+
+        frame_idx = 0
+        failed_count = 0
+
+        try:
+            while True:
+                ret, frame = cap.read()
+
+                if not ret or frame is None:
+                    failed_count += 1
+
+                    if failed_count % 30 == 0:
+                        print(f"Frame alınamadı. failed_count={failed_count}")
+
+                    continue
+
+                failed_count = 0
+
+                # Kamera ters ise düzelt
+                if flip_enabled:
+                    frame = cv2.flip(frame, flip_code)
+
+                # Output writer ilk geçerli frame geldikten sonra açılır.
+                if output_video_path is not None and writer is None:
+                    output_dir = self.config["paths"].get(
+                        "output_dir",
+                        os.path.dirname(output_video_path),
+                    )
+                    ensure_dir(output_dir)
+
+                    h, w = frame.shape[:2]
+
+                    fps = self.video_cfg.get("rtsp_output_fps", 30.0)
+                    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+
+                    writer = cv2.VideoWriter(
+                        output_video_path,
+                        fourcc,
+                        fps,
+                        (w, h),
+                    )
+
+                    if not writer.isOpened():
+                        raise RuntimeError(
+                            f"Output video oluşturulamadı: {output_video_path}"
+                        )
+
+                    print(f"Output video: {output_video_path}")
+                    print(f"Writer resolution: {w}x{h}")
+                    print(f"Writer FPS: {fps}")
+
+                # YOLO + Kalman + çizimler + legend + log hazırlığı
+                processed_frame, status_text = self.process_frame(frame, frame_idx)
+
+                # Video kaydı
+                if writer is not None:
+                    writer.write(processed_frame)
+
+                # Canlı görüntü: cv2.imshow yerine GStreamer appsrc kullanıyoruz.
+                if self.video_cfg.get("show_live", False):
+                    display_frame = processed_frame
+
+                    if self.video_cfg.get("display_resize", False):
+                        display_frame = resize_for_display(
+                            processed_frame,
+                            max_width=self.video_cfg.get("display_max_width", 1280),
+                            max_height=self.video_cfg.get("display_max_height", 720),
+                        )
+
+                    if display is None:
+                        from src.gstreamer_display import GStreamerDisplay
+
+                        display_h, display_w = display_frame.shape[:2]
+
+                        display = GStreamerDisplay(
+                            width=display_w,
+                            height=display_h,
+                            fps=self.video_cfg.get("rtsp_output_fps", 30.0),
+                        )
+
+                        print(f"Live display açıldı: {display_w}x{display_h}")
+
+                    display.show(display_frame)
+
+                if frame_idx % 30 == 0:
+                    print(status_text)
+
+                frame_idx += 1
+
+                if max_frames > 0 and frame_idx >= max_frames:
+                    print(f"max_frames={max_frames} değerine ulaşıldı.")
+                    break
+
+        except KeyboardInterrupt:
+            print("Ctrl+C ile çıkış yapıldı.")
+
+        finally:
+            cap.release()
+
+            if writer is not None:
+                writer.release()
+
+            if display is not None:
+                display.release()
+
+        print("RTSP GStreamer Python Kalman processing bitti.")
+
+        if output_video_path is not None:
+            print(f"Kaydedilen video: {output_video_path}")
+
+        if self.log_path is not None:
+            print(f"Kaydedilen log: {self.log_path}")
